@@ -78,6 +78,10 @@ const TEMPLATES = {
     sujet: "Réinitialisation de votre mot de passe 🔐",
     html: wrap(`${h1("Réinitialisation du mot de passe")}${p(`Bonjour ${nom}, vous avez demandé à réinitialiser votre mot de passe.`)}${p("Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable 1 heure.")}${note("Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe reste inchangé.", '#e53e3e')}`)
   }),
+  exclusion: (nom, d) => ({
+    sujet: "Votre compte Box'Concours a ete suspendu",
+    html: wrap(`${h1("Compte exclu de la plateforme", '#e53e3e')}${p(`Bonjour ${nom},`)}${p("Nous vous informons que votre compte Box'Concours a ete exclu suite au non-respect de notre politique d'utilisation.")}${note("Tout manquement aux regles de la plateforme entraine la suspension ou suppression definitive du compte.", '#e53e3e')}${p("Pour toute question : contact@boxconcours.fr")}${p("L'equipe Box'Concours")}`)
+  }),
 };
 
 export default async function handler(req, res) {
