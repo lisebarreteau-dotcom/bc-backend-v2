@@ -67,17 +67,16 @@ async function marquerReservationPayee(reservationId) {
     reservation.cavalier_id,
     'reservation_payee',
     'Paiement confirmé 💳',
-    'Votre réservation a bien été payée. Bon concours !',
+    'Votre réservation a bien été payée. Pensez à demander votre ou vos numéros de box au sous-loueur via la messagerie. Bon concours !',
     'profil:reservations'
   );
   await creerNotification(
     reservation.sous_loueur_id,
     'box_paye',
     'Box payé 💰',
-    (reservation.cavalier_nom || reservation.cavalier_email || 'Un cavalier') + ' a payé sa réservation. Le virement sera effectué selon le calendrier habituel.',
+    (reservation.cavalier_nom || reservation.cavalier_email || 'Un cavalier') + ' a payé sa réservation. Le virement sera effectué selon le calendrier habituel. Pensez à lui communiquer le numéro de son box et son emplacement sur le concours via la messagerie.',
     'profil:reservations'
   );
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
