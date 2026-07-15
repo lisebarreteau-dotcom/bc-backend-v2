@@ -47,6 +47,19 @@ async function creerNotification(userId, type, titre, message, lien) {
   }
 }
 
+async function envoyerEmail(type, to, nom, details) {
+  if (!to) return;
+  try {
+    await fetch('https://bc-backend-v2.vercel.app/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, to, nom, details }),
+    });
+  } catch (e) {
+    console.error('Erreur envoi email:', e);
+  }
+}
+
 async function marquerReservationPayee(reservationId) {
   if (!reservationId) return;
 
@@ -62,7 +75,20 @@ async function marquerReservationPayee(reservationId) {
 
   if (!reservation) return;
 
-  // 3. Notifier le cavalier et le sous-loueur
+  // 3. Récupérer le nom du concours et l'email du sous-loueur
+  let nomConcours = '';
+  try {
+    const concoursRows = await supabaseRequest(`concours?id=eq.${reservation.concours_id}&select=nom`);
+    nomConcours = concoursRows && concoursRows[0] ? concoursRows[0].nom : '';
+  } catch (e) {}
+
+  let emailSousLoueur = '';
+  try {
+    const userRows = await supabaseRequest(`users?id=eq.${reservation.sous_loueur_id}&select=email`);
+    emailSousLoueur = userRows && userRows[0] ? userRows[0].email : '';
+  } catch (e) {}
+
+  // 4. Notifier le cavalier et le sous-loueur (in-app)
   await creerNotification(
     reservation.cavalier_id,
     'reservation_payee',
@@ -77,6 +103,22 @@ async function marquerReservationPayee(reservationId) {
     (reservation.cavalier_nom || reservation.cavalier_email || 'Un cavalier') + ' a payé sa réservation. Le virement sera effectué selon le calendrier habituel. Pensez à lui communiquer le numéro de son box et son emplacement sur le concours via la messagerie.',
     'profil:reservations'
   );
+
+  // 5. Envoyer les emails (cavalier + sous-loueur)
+  const reference = 'Résa #' + String(reservation.numero).padStart(6, '0');
+  await envoyerEmail('paiement_recu', reservation.cavalier_email, reservation.cavalier_nom || reservation.cavalier_email, {
+    concours: nomConcours,
+    dates: reservation.jours,
+    prix: (reservation.montant || 0) + '€',
+    reference,
+  });
+  await envoyerEmail('box_sous_louee', emailSousLoueur, reservation.sous_loueur_nom || emailSousLoueur, {
+    concours: nomConcours,
+    dates: reservation.jours,
+    cavalier: reservation.cavalier_nom || reservation.cavalier_email,
+    prix: (reservation.montant || 0) + '€',
+  });
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
