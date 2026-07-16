@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         annonceId: annonceId ? String(annonceId) : '',
       },
       success_url: `https://boxconcours.fr/?paiement=ok&resa=${annonceId}`,
-      cancel_url: `https://boxconcours.fr/?paiement=annule`,
+      cancel_url: `https://boxconcours.fr/?paiement=annule&resa=${reservationId}`,
     });
     res.status(200).json({ url: session.url });
   } catch (err) {
