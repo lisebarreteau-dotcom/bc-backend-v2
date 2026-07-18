@@ -43,6 +43,12 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Mot de passe incorrect' });
   }
 
+  // Simple vérification du mot de passe, sans toucher à aucune table
+  // (utilisé pour la connexion à l'admin).
+  if (operation === 'verify') {
+    return res.status(200).json({ ok: true });
+  }
+
   if (!ALLOWED_TABLES.includes(table)) {
     return res.status(400).json({ error: `Table non autorisée : ${table}` });
   }
