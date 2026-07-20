@@ -1,10 +1,10 @@
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
- 
+
 export const config = {
   api: { bodyParser: false },
 };
- 
+
 function buffer(readable) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -13,10 +13,14 @@ function buffer(readable) {
     readable.on('error', reject);
   });
 }
- 
+
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kcmFwcHdzZWJwbHByem5xc2xtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NTMxMjYsImV4cCI6MjA5ODEyOTEyNn0.Wfu6TGz1jAv-UJMO8gm5TiyVgol5eNsOL5vGwqazwTA';
- 
+// ⚠️ Avant : clé "anon" (publique) en dur — bloquée par les RLS pour les
+// écritures (notifications, reservations...). Remplacée par la clé
+// service_role (comme dans admin-action.js), qui contourne les RLS et a
+// toujours accès à tout, sans dépendre d'une session utilisateur.
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 async function supabaseRequest(path, options = {}) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
@@ -24,7 +28,7 @@ async function supabaseRequest(path, options = {}) {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
-      Prefer: options.method === 'PATCH' ? 'return=minimal' : 'return=representation',
+      Prefer: options.method === 'PATCH' ? 'return=representation' : 'return=representation',
       ...(options.headers || {}),
     },
   });
@@ -34,7 +38,7 @@ async function supabaseRequest(path, options = {}) {
   }
   return resp.status === 204 ? null : resp.json();
 }
- 
+
 async function creerNotification(userId, type, titre, message, lien) {
   if (!userId) return;
   try {
@@ -46,7 +50,7 @@ async function creerNotification(userId, type, titre, message, lien) {
     console.error('Erreur création notification:', e);
   }
 }
- 
+
 async function notifierAdmin(type, titre, message, lien) {
   try {
     await supabaseRequest('notifications_admin', {
@@ -57,7 +61,7 @@ async function notifierAdmin(type, titre, message, lien) {
     console.error('Erreur notification admin:', e);
   }
 }
- 
+
 async function envoyerEmail(type, to, nom, details) {
   if (!to) return;
   try {
@@ -70,37 +74,44 @@ async function envoyerEmail(type, to, nom, details) {
     console.error('Erreur envoi email:', e);
   }
 }
- 
+
 async function marquerReservationPayee(reservationId) {
   if (!reservationId) return;
- 
+
   // 1. Récupérer la réservation AVANT mise à jour pour connaître cavalier/sous-loueur
   const rows = await supabaseRequest(`reservations?id=eq.${reservationId}&select=*`);
   const reservation = rows && rows[0];
- 
-  // 2. Marquer comme payée
-  await supabaseRequest(`reservations?id=eq.${reservationId}`, {
+
+  if (!reservation) {
+    console.error('Réservation introuvable pour marquerReservationPayee, id=', reservationId);
+    return;
+  }
+
+  // 2. Marquer comme payée (return=representation : on vérifie qu'une ligne a bien été modifiée)
+  const updated = await supabaseRequest(`reservations?id=eq.${reservationId}`, {
     method: 'PATCH',
     body: JSON.stringify({ statut: 'payee' }),
   });
- 
-  if (!reservation) return;
- 
+  if (!updated || !updated[0]) {
+    console.error('Échec mise à jour statut payee pour la réservation', reservationId);
+    return;
+  }
+
   // 3. Récupérer le nom du concours et l'email du sous-loueur
   let nomConcours = '';
   try {
     const concoursRows = await supabaseRequest(`concours?id=eq.${reservation.concours_id}&select=nom`);
     nomConcours = concoursRows && concoursRows[0] ? concoursRows[0].nom : '';
   } catch (e) {}
- 
+
   let emailSousLoueur = '';
   try {
     const userRows = await supabaseRequest(`users?id=eq.${reservation.sous_loueur_id}&select=email`);
     emailSousLoueur = userRows && userRows[0] ? userRows[0].email : '';
   } catch (e) {}
- 
+
   const numero = String(reservation.numero).padStart(6, '0');
- 
+
   // 4. Notifier le cavalier et le sous-loueur (in-app)
   await creerNotification(
     reservation.cavalier_id,
@@ -116,7 +127,7 @@ async function marquerReservationPayee(reservationId) {
     (reservation.cavalier_nom || reservation.cavalier_email || 'Un cavalier') + ' a payé sa réservation. Le virement sera effectué selon le calendrier habituel. Pensez à lui communiquer le numéro de son box et son emplacement sur le concours via la messagerie.',
     'profil:reservations'
   );
- 
+
   // 5. Notifier l'admin (in-app + email)
   await notifierAdmin(
     'nouvelle_transaction',
@@ -130,7 +141,7 @@ async function marquerReservationPayee(reservationId) {
     concours: nomConcours,
     montant: (reservation.montant || 0) + '€',
   });
- 
+
   // 6. Envoyer les emails (cavalier + sous-loueur)
   const reference = 'Résa #' + numero;
   await envoyerEmail('paiement_recu', reservation.cavalier_email, reservation.cavalier_nom || reservation.cavalier_email, {
@@ -146,13 +157,13 @@ async function marquerReservationPayee(reservationId) {
     prix: (reservation.montant || 0) + '€',
   });
 }
- 
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
- 
+
   const sig = req.headers['stripe-signature'];
   const buf = await buffer(req);
- 
+
   let event;
   try {
     event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
@@ -160,7 +171,7 @@ export default async function handler(req, res) {
     console.error('Signature webhook invalide :', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
- 
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const reservationId = session.metadata?.reservationId;
@@ -171,7 +182,7 @@ export default async function handler(req, res) {
       console.error('Erreur mise à jour Supabase:', e);
     }
   }
- 
+
   res.status(200).json({ received: true });
 }
  
