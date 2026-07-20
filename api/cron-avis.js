@@ -15,7 +15,7 @@
 //   même que celle utilisée côté frontend (BACKEND_URL).
 // ═══════════════════════════════════════════════════════════════════
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BACKEND_EMAIL_URL = 'https://bc-backend-v2.vercel.app/api/send-email';
 
