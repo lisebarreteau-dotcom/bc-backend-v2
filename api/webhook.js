@@ -135,7 +135,7 @@ async function marquerReservationPayee(reservationId) {
     (reservation.cavalier_nom || reservation.cavalier_email) + ' a payé ' + (reservation.montant || 0) + '€ pour "' + nomConcours + '" (résa #' + numero + ').',
     'admin:reservations'
   );
-  await envoyerEmail('admin_nouvelle_transaction', 'contact@boxconcours.fr', 'Admin', {
+  await envoyerEmail('admin_nouvelle_transaction', 'lisebarreteau@gmail.com', 'Admin', {
     nom: reservation.cavalier_nom || reservation.cavalier_email,
     numero,
     concours: nomConcours,
