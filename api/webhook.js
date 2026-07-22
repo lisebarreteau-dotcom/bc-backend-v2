@@ -15,10 +15,13 @@ function buffer(readable) {
 }
 
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
-// ⚠️ Avant : clé "anon" (publique) en dur — bloquée par les RLS pour les
-// écritures (notifications, reservations...). Remplacée par la clé
-// service_role (comme dans admin-action.js), qui contourne les RLS et a
-// toujours accès à tout, sans dépendre d'une session utilisateur.
+// ⚠️ Supabase a changé de format de clé : la nouvelle clé secrète
+// (sb_secret_...) N'EST PLUS un JWT. Elle DOIT être envoyée uniquement dans
+// l'en-tête `apikey` — si on l'envoie aussi dans `Authorization: Bearer`
+// (comme on le faisait avec l'ancienne clé service_role au format JWT),
+// Supabase REJETTE la requête silencieusement. C'est exactement ce qui
+// bloquait la mise à jour du statut "payee" alors que le webhook renvoyait
+// quand même 200 OK à Stripe.
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function supabaseRequest(path, options = {}) {
@@ -26,7 +29,6 @@ async function supabaseRequest(path, options = {}) {
     ...options,
     headers: {
       apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
       Prefer: options.method === 'PATCH' ? 'return=representation' : 'return=representation',
       ...(options.headers || {}),
