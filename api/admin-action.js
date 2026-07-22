@@ -14,8 +14,13 @@ async function supabaseAdminRequest(path, options = {}) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     headers: {
+      // ⚠️ Supabase a changé de format de clé : la nouvelle clé secrète
+      // (sb_secret_...) N'EST PLUS un JWT. Elle DOIT être envoyée
+      // uniquement dans l'en-tête `apikey` — l'envoyer aussi dans
+      // `Authorization: Bearer` (comme avec l'ancienne clé service_role au
+      // format JWT) fait REJETER la requête silencieusement par Supabase.
+      // C'était la cause du blocage des suppressions/mises à jour admin.
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
       ...(options.headers || {}),
