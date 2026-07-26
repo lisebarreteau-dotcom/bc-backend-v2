@@ -11,9 +11,9 @@ const COLORS = {
   danger: '#e53e3e',
 };
 
-const header = `<div style="background:#1a2744;padding:24px 32px;border-radius:12px 12px 0 0"><table cellpadding="0" cellspacing="0"><tr><td style="width:42px;height:42px;background:white;border-radius:8px;text-align:center;vertical-align:middle;font-size:22px">🧩</td><td style="padding-left:14px"><div style="color:white;font-size:18px;font-weight:700">Box'Concours</div><div style="color:#8ba3d4;font-size:11px;letter-spacing:1.5px;text-transform:uppercase">by Jump-Addict</div></td></tr></table></div>`;
+const header = `<div style="padding:22px 32px 10px"><div style="color:#8ba3d4;font-size:11px;letter-spacing:1.5px;text-transform:uppercase">Box'Concours</div></div>`;
 
-const footer = `<div style="background:#1a2744;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center"><p style="color:#8ba3d4;font-size:12px;margin:0">Box'Concours by Jump-Addict — <a href="https://boxconcours.fr" style="color:#5b8ff9;text-decoration:none">boxconcours.fr</a></p><p style="color:#8ba3d4;font-size:11px;margin:6px 0 0">Plateforme de sous-location de boxes · CSO & Dressage · Partout en France</p></div>`;
+const footer = `<div style="background:#1a2744;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center"><table cellpadding="0" cellspacing="0" style="margin:0 auto 10px"><tr><td style="width:28px;height:28px;background:white;border-radius:6px;text-align:center;vertical-align:middle;font-size:14px">🧩</td><td style="padding-left:8px;text-align:left"><div style="color:white;font-size:13px;font-weight:700">Box'Concours</div></td></tr></table><p style="color:#8ba3d4;font-size:12px;margin:0">Box'Concours by Jump-Addict — <a href="https://boxconcours.fr" style="color:#5b8ff9;text-decoration:none">boxconcours.fr</a></p><p style="color:#8ba3d4;font-size:11px;margin:6px 0 0">Plateforme de sous-location de boxes · CSO & Dressage · Partout en France</p><p style="color:#5b7099;font-size:10px;margin:12px 0 0">Vous ne trouvez pas nos emails ? Vérifiez l'onglet "Promotions" ou "Annonces" de votre messagerie.</p></div>`;
 
 const wrap = (content) => `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#0f1b35;padding:20px;border-radius:14px">${header}<div style="background:#162040;padding:32px;border-left:4px solid #3b6fd4">${content}</div>${footer}</div>`;
 
@@ -230,4 +230,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erreur serveur", details: err.message });
   }
 }
- 
