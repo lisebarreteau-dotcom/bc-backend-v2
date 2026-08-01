@@ -87,8 +87,8 @@ const TEMPLATES = {
   // ─── NOUVEAUX TEMPLATES ─────────────────────────────────────────
 
   annonce_publiee: (nom, d) => ({
-    sujet: "Votre annonce est en ligne ✅",
-    html: wrap(`${h1("Annonce publiée !", '#38a169')}${p(`Bonjour ${nom}, votre annonce est maintenant visible par les cavaliers.`)}${card(`${row("Concours :", d?.concours || "—")}${row("Nombre de boxes :", d?.nb_boxes || "—")}`)}${p("Vous recevrez une notification dès qu'un cavalier fera une demande de réservation.")}`)
+    sujet: "Votre annonce est en ligne",
+    html: wrap(`${h1("Annonce publiée")}${p(`Bonjour ${nom}, votre annonce est maintenant visible par les cavaliers.`)}${card(`${row("Concours :", d?.concours || "—")}${row("Nombre de boxes :", d?.nb_boxes || "—")}`)}${p("Vous recevrez une notification dès qu'un cavalier fera une demande de réservation.")}`)
   }),
 
   remboursement: (nom, d) => ({
@@ -122,7 +122,7 @@ const TEMPLATES = {
   }),
 
   admin_nouvelle_annonce: (nom, d) => ({
-    sujet: "Nouvelle annonce publiée 📋",
+    sujet: "Nouvelle annonce publiée",
     html: wrap(`${h1("Nouvelle annonce")}${p("Un adhérent vient de publier une nouvelle annonce.")}${card(`${row("Adhérent :", d?.nom || "—")}${row("Concours :", d?.concours || "—")}${row("Nombre de boxes :", d?.nb_boxes || "—")}`)}`)
   }),
 
@@ -167,13 +167,13 @@ const TEMPLATES = {
   }),
 
   demande_avis: (nom, d) => ({
-    sujet: "Comment s'est passée votre sous-location ? ⭐",
-    html: wrap(`${h1("Votre avis compte !", '#5b8ff9')}${p(`Bonjour ${nom}, votre box loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${card(`${row("Sous-loueur :", d?.sous_loueur || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce sous-loueur — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif !")}`)
+    sujet: "Comment s'est passée votre sous-location ?",
+    html: wrap(`${h1("Votre avis compte")}${p(`Bonjour ${nom}, votre box loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${card(`${row("Sous-loueur :", d?.sous_loueur || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce sous-loueur — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif.")}`)
   }),
 
   demande_avis_cavalier: (nom, d) => ({
-    sujet: "Comment s'est passée cette sous-location ? ⭐",
-    html: wrap(`${h1("Votre avis compte !", '#5b8ff9')}${p(`Bonjour ${nom}, la sous-location de votre box pour "${d?.concours || 'ce concours'}" est terminée.`)}${card(`${row("Cavalier :", d?.cavalier || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce cavalier — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif !")}`)
+    sujet: "Comment s'est passée cette sous-location ?",
+    html: wrap(`${h1("Votre avis compte")}${p(`Bonjour ${nom}, la sous-location de votre box pour "${d?.concours || 'ce concours'}" est terminée.`)}${card(`${row("Cavalier :", d?.cavalier || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce cavalier — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif.")}`)
   }),
 };
 
