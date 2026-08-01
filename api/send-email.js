@@ -186,10 +186,31 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Méthode non autorisée" });
   }
 
-  const { type, to, nom, details } = req.body;
+  const { type, to, toUserId, nom, details } = req.body;
 
-  if (!type || !to || !nom) {
-    return res.status(400).json({ error: "Champs manquants : type, to, nom requis" });
+  if (!type || (!to && !toUserId) || !nom) {
+    return res.status(400).json({ error: "Champs manquants : type, (to ou toUserId), nom requis" });
+  }
+
+  // Si le client fournit un identifiant utilisateur plutôt qu'un email direct,
+  // on va chercher l'adresse nous-mêmes ici (côté serveur, avec la clé secrète),
+  // pour que l'email des autres utilisateurs ne transite jamais par le navigateur.
+  let destinataire = to;
+  if (!destinataire && toUserId) {
+    const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${toUserId}&select=email`, {
+        headers: { apikey: SUPABASE_SERVICE_ROLE_KEY },
+      });
+      const [u] = await resp.json();
+      destinataire = u?.email;
+    } catch (e) {
+      console.error('Erreur lookup email destinataire:', e);
+    }
+    if (!destinataire) {
+      return res.status(404).json({ error: "Email introuvable pour cet utilisateur" });
+    }
   }
 
   const BREVO_API_KEY = process.env.BREVO_API_KEY;
@@ -213,7 +234,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         sender: { name: "Box'Concours", email: "contact@boxconcours.fr" },
-        to: [{ email: to, name: nom }],
+        to: [{ email: destinataire, name: nom }],
         subject: sujet,
         htmlContent: html,
       }),
