@@ -3,6 +3,10 @@
     {
       "path": "/api/cron-avis",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron-solde",
+      "schedule": "0 10 * * *"
     }
   ]
 }
