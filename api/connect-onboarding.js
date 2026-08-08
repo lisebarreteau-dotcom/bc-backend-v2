@@ -85,6 +85,11 @@ export default async function handler(req, res) {
           transfers: { requested: true },
         },
         business_type: 'individual',
+        business_profile: {
+          url: SITE_URL,
+          product_description: 'Sous-location de box équestre lors de concours hippiques (CSO, Dressage, Élevage) via la plateforme Box\'Concours.',
+          mcc: '4225', // Entreposage / location d'espace — code marchand le plus proche de l'activité
+        },
         metadata: {
           box_concours_user_id: user.id,
         },
