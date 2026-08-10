@@ -41,7 +41,12 @@ async function supabaseRequest(path, options = {}) {
     const text = await resp.text();
     throw new Error(`Supabase ${path} error: ${resp.status} ${text}`);
   }
-  return resp.status === 204 ? null : resp.json();
+  // Certaines réponses Supabase renvoient un corps vide avec un statut
+  // 200 au lieu de 204 (comportement pas garanti à 100%) — on ne tente
+  // .json() que si le corps n'est pas vide, pour éviter un crash
+  // "Unexpected end of JSON input" sur une réponse pourtant réussie.
+  const text = await resp.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export default async function handler(req, res) {
