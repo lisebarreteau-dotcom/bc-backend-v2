@@ -9,9 +9,7 @@
 // puis génère un lien d'onboarding Stripe (formulaire hébergé par
 // Stripe : identité + IBAN) et le renvoie au frontend pour redirection.
 //
-// ⚠️ MODE TEST pour l'instant : utilise STRIPE_SECRET_KEY_TEST.
-// Pour passer en production, remplacer par STRIPE_SECRET_KEY (la clé
-// live existante) une fois tout testé et validé.
+// ✅ MODE LIVE — utilise STRIPE_SECRET_KEY (clé live).
 //
 // ⚠️ Même piège que les autres endpoints : la clé secrète Supabase
 // (sb_secret_...) doit être envoyée UNIQUEMENT dans l'en-tête `apikey`,
@@ -19,7 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import Stripe from 'stripe';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY_TEST);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -46,7 +44,10 @@ async function supabaseRequest(path, options = {}) {
     const text = await resp.text();
     throw new Error(`Supabase ${path} error: ${resp.status} ${text}`);
   }
-  return resp.status === 204 ? null : resp.json();
+  // Même correctif que connect-transfer.js : éviter un crash .json()
+  // sur une réponse Supabase à corps vide (200 sans body).
+  const text = await resp.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export default async function handler(req, res) {
