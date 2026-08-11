@@ -9,15 +9,14 @@
 // comme traitée — remplace le traitement manuel qui se faisait jusqu'ici
 // à la main depuis l'onglet admin "Virements".
 //
-// ⚠️ MODE TEST pour l'instant : utilise STRIPE_SECRET_KEY_TEST.
-// À remplacer par STRIPE_SECRET_KEY une fois testé et prêt pour la prod.
+// ✅ MODE LIVE — utilise STRIPE_SECRET_KEY (clé live).
 //
 // ⚠️ Même piège que les autres endpoints Supabase : la clé secrète
 // (sb_secret_...) doit être envoyée UNIQUEMENT dans l'en-tête `apikey`.
 // ═══════════════════════════════════════════════════════════════════
 
 import Stripe from 'stripe';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY_TEST);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
