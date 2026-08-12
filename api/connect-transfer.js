@@ -115,6 +115,35 @@ export default async function handler(req, res) {
       }),
     });
 
+    // 3bis. Générer la facture correspondant à ce virement
+    // Non bloquant à dessein : un souci de facturation ne doit jamais
+    // empêcher le virement réel ni les notifications à l'adhérent.
+    try {
+      const numero = await supabaseRequest('rpc/generate_facture_numero', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+
+      await supabaseRequest('factures', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          numero,
+          user_id: user.id,
+          nom_client: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
+          concours_nom: '',
+          concours_lieu: '',
+          date_debut: null,
+          date_fin: null,
+          montant,
+          reservation_id: null,
+          transfer_ref: transfer.id,
+        }),
+      });
+    } catch (eFacture) {
+      console.error('Erreur génération facture connect-transfer:', eFacture);
+    }
+
     // 4. Notifier l'adhérent (in-app + email) et l'admin
     await supabaseRequest('notifications', {
       method: 'POST',
