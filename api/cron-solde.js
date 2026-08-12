@@ -93,6 +93,39 @@ export default async function handler(req, res) {
           continue;
         }
 
+        // 4bis. Générer la facture correspondant à la commission prélevée
+        // Non bloquant à dessein : un souci de facturation ne doit jamais
+        // empêcher le virement réel ni la notification à l'adhérent.
+        const commission = (r.montant || 0) - montantSousLoueur;
+        try {
+          const numeroResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/generate_facture_numero`, {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({}),
+          });
+          const numero = await numeroResp.json();
+
+          await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+            body: JSON.stringify({
+              numero,
+              user_id: r.sous_loueur_id,
+              nom_client: r.sous_loueur_nom || u.email,
+              concours_nom: r.concours_nom || '',
+              concours_lieu: r.concours_lieu || '',
+              date_debut: r.date_debut || null,
+              date_fin: r.date_fin || null,
+              montant: commission,
+              reservation_id: r.id,
+              transfer_ref: null,
+            }),
+          });
+        } catch (eFacture) {
+          console.error('Erreur génération facture réservation', r.id, eFacture);
+          erreurs.push({ reservationId: r.id, erreur: 'échec génération facture (non bloquant)' });
+        }
+
         // 5. Notification in-app (même texte que le flux manuel)
         await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
           method: 'POST',
