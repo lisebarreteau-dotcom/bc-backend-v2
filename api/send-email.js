@@ -175,6 +175,11 @@ const TEMPLATES = {
     sujet: "Comment s'est passée cette sous-location ?",
     html: wrap(`${h1("Votre avis compte")}${p(`Bonjour ${nom}, la sous-location de votre box pour "${d?.concours || 'ce concours'}" est terminée.`)}${card(`${row("Cavalier :", d?.cavalier || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce cavalier — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif.")}`)
   }),
+
+  avis_recu: (nom, d) => ({
+    sujet: "Vous avez reçu un nouvel avis",
+    html: wrap(`${h1("Nouvel avis reçu", '#5b8ff9')}${p(`Bonjour ${nom}, ${d?.auteur || 'quelqu\'un'} vient de vous laisser un avis${d?.concours ? ' suite à "' + d.concours + '"' : ''}.`)}${card(`${row("Note :", (d?.note || '—') + '/5')}`)}${p("Retrouvez le détail de cet avis, avec le commentaire s'il y en a un, dans votre espace personnel.")}`)
+  }),
 };
 
 export default async function handler(req, res) {
