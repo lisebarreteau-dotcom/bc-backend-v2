@@ -167,13 +167,13 @@ const TEMPLATES = {
   }),
 
   demande_avis: (nom, d) => ({
-    sujet: "Comment s'est passée votre sous-location ?",
-    html: wrap(`${h1("Votre avis compte")}${p(`Bonjour ${nom}, votre box loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${card(`${row("Sous-loueur :", d?.sous_loueur || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce sous-loueur — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif.")}`)
+    sujet: "Votre box sous-loué est terminé",
+    html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}`)
   }),
 
   demande_avis_cavalier: (nom, d) => ({
-    sujet: "Comment s'est passée cette sous-location ?",
-    html: wrap(`${h1("Votre avis compte")}${p(`Bonjour ${nom}, la sous-location de votre box pour "${d?.concours || 'ce concours'}" est terminée.`)}${card(`${row("Cavalier :", d?.cavalier || "—")}${row("Concours :", d?.concours || "—")}`)}${p("Prenez un instant pour noter votre expérience avec ce cavalier — cela aide toute la communauté Box'Concours à mieux choisir. C'est totalement facultatif.")}`)
+    sujet: "Votre box sous-loué est terminé",
+    html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}`)
   }),
 
   avis_recu: (nom, d) => ({
