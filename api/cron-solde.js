@@ -8,8 +8,17 @@
 // marquerVirementEffectue() du frontend (traitement manuel) :
 // montantSousLoueur = Math.round(montant * 21/24), écrit sur
 // users.solde_transit, puis reservations.virement_effectue = true.
-// Objectif : automatiser ce qui se fait aujourd'hui à la main dans
-// l'onglet admin "Virements", sans rien changer au calcul.
+//
+// ⚠️ CORRECTIF IMPORTANT : le crédit se déclenche désormais le
+// lendemain de la fin RÉELLE DU CONCOURS (concours.date_fin), et non
+// plus le lendemain du dernier jour loué par chaque réservation
+// individuelle. Avant ce correctif, un cavalier n'ayant réservé que
+// le premier jour d'un concours de 3 jours déclenchait un paiement
+// dès le lendemain de CE jour-là — bien avant la fin réelle de
+// l'événement, ce qui ne laissait aucune marge pour gérer un litige
+// sur le reste du concours. Désormais, TOUTES les réservations payées
+// d'un même concours sont créditées ensemble, un jour après la fin
+// réelle du concours.
 //
 // ⚠️ Même piège que sur les autres crons : la clé secrète Supabase
 // (sb_secret_...) doit être envoyée UNIQUEMENT dans l'en-tête `apikey`,
@@ -38,9 +47,34 @@ export default async function handler(req, res) {
     .format(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
   try {
-    // 1. Réservations dont le dernier jour loué est hier, payées, pas encore créditées
+    // 1. Concours dont la date de fin RÉELLE est hier
+    const respConcours = await fetch(
+      `${SUPABASE_URL}/rest/v1/concours?date_fin=eq.${hierParis}&select=id`,
+      { headers: supabaseHeaders() }
+    );
+    const concoursTermines = await respConcours.json();
+    if (!Array.isArray(concoursTermines)) {
+      return res.status(500).json({ error: 'Erreur lecture concours', detail: concoursTermines });
+    }
+
+    if (concoursTermines.length === 0) {
+      return res.status(200).json({
+        ok: true,
+        date: hierParis,
+        reservationsTraitees: 0,
+        totalCredite: 0,
+        erreurs: [],
+        info: 'Aucun concours ne se terminait hier.',
+      });
+    }
+
+    const concoursIds = concoursTermines.map(c => c.id).join(',');
+
+    // 2. Réservations payées, liées à ces concours, pas encore créditées —
+    // peu importe le nombre de jours réservés individuellement par chaque
+    // cavalier, seule la fin réelle du concours compte désormais.
     const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/reservations?dernier_jour=eq.${hierParis}&statut=eq.payee&or=(virement_effectue.is.null,virement_effectue.eq.false)`,
+      `${SUPABASE_URL}/rest/v1/reservations?concours_id=in.(${concoursIds})&statut=eq.payee&or=(virement_effectue.is.null,virement_effectue.eq.false)`,
       { headers: supabaseHeaders() }
     );
     const reservations = await resp.json();
@@ -58,7 +92,7 @@ export default async function handler(req, res) {
         // sans modifier aussi le frontend, pour garder les deux cohérents.
         const montantSousLoueur = Math.round((r.montant || 0) * 21 / 24);
 
-        // 2. Solde actuel du sous-loueur
+        // 3. Solde actuel du sous-loueur
         const respU = await fetch(
           `${SUPABASE_URL}/rest/v1/users?id=eq.${r.sous_loueur_id}&select=solde_transit,email`,
           { headers: supabaseHeaders() }
@@ -71,7 +105,7 @@ export default async function handler(req, res) {
         }
         const nouveauSolde = (u.solde_transit || 0) + montantSousLoueur;
 
-        // 3. Créditer le solde transit
+        // 4. Créditer le solde transit
         const majSolde = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${r.sous_loueur_id}`, {
           method: 'PATCH',
           headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
@@ -82,7 +116,7 @@ export default async function handler(req, res) {
           continue;
         }
 
-        // 4. Marquer la réservation comme virement effectué (même colonnes que le flux manuel)
+        // 5. Marquer la réservation comme virement effectué (même colonnes que le flux manuel)
         const majResa = await fetch(`${SUPABASE_URL}/rest/v1/reservations?id=eq.${r.id}`, {
           method: 'PATCH',
           headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
@@ -93,7 +127,7 @@ export default async function handler(req, res) {
           continue;
         }
 
-        // 4bis. Générer la facture correspondant à la commission prélevée
+        // 5bis. Générer la facture correspondant à la commission prélevée
         // Non bloquant à dessein : un souci de facturation ne doit jamais
         // empêcher le virement réel ni la notification à l'adhérent.
         const commission = (r.montant || 0) - montantSousLoueur;
@@ -126,7 +160,7 @@ export default async function handler(req, res) {
           erreurs.push({ reservationId: r.id, erreur: 'échec génération facture (non bloquant)' });
         }
 
-        // 5. Notification in-app (même texte que le flux manuel)
+        // 6. Notification in-app (même texte que le flux manuel)
         await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
           method: 'POST',
           headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
@@ -139,7 +173,7 @@ export default async function handler(req, res) {
           }),
         });
 
-        // 6. Email (même type que le flux manuel : "virement_recu")
+        // 7. Email (même type que le flux manuel : "virement_recu")
         if (u.email) {
           await fetch(BACKEND_EMAIL_URL, {
             method: 'POST',
@@ -169,6 +203,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       date: hierParis,
+      concoursTermines: concoursTermines.length,
       reservationsTraitees: traitees,
       totalCredite,
       erreurs,
