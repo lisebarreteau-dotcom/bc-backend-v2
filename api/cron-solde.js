@@ -12,18 +12,28 @@
 // ⚠️ CORRECTIF IMPORTANT : le crédit se déclenche désormais le
 // lendemain de la fin RÉELLE DU CONCOURS (concours.date_fin), et non
 // plus le lendemain du dernier jour loué par chaque réservation
-// individuelle. Avant ce correctif, un cavalier n'ayant réservé que
-// le premier jour d'un concours de 3 jours déclenchait un paiement
-// dès le lendemain de CE jour-là — bien avant la fin réelle de
-// l'événement, ce qui ne laissait aucune marge pour gérer un litige
-// sur le reste du concours. Désormais, TOUTES les réservations payées
-// d'un même concours sont créditées ensemble, un jour après la fin
-// réelle du concours.
+// individuelle.
+//
+// ✅ NOUVEAU : le compte Stripe a été passé en virements MANUELS
+// (Dashboard Stripe → Paramètres → Comptes bancaires et devises), pour
+// que le solde plateforme ne soit plus balayé automatiquement en
+// entier vers le compte bancaire perso — ce qui emportait avec lui la
+// part réservée aux loueurs (solde_transit), avant même qu'ils n'aient
+// demandé leur retrait. À la place, ce cron déclenche maintenant
+// lui-même un virement Stripe manuel, mais UNIQUEMENT du montant de la
+// commission plateforme (jamais la part du loueur) — un seul virement
+// groupé à la fin du run, pour toutes les commissions traitées ce
+// jour-là. La part du loueur (solde_transit) reste intacte sur le
+// solde Stripe, disponible pour connect-transfer.js le jour où il en
+// demande le retrait.
 //
 // ⚠️ Même piège que sur les autres crons : la clé secrète Supabase
 // (sb_secret_...) doit être envoyée UNIQUEMENT dans l'en-tête `apikey`,
 // jamais dans `Authorization: Bearer`.
 // ═══════════════════════════════════════════════════════════════════
+
+import Stripe from 'stripe';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -84,6 +94,7 @@ export default async function handler(req, res) {
 
     let traitees = 0;
     let totalCredite = 0;
+    let totalCommission = 0;
     const erreurs = [];
 
     for (const r of reservations) {
@@ -194,9 +205,31 @@ export default async function handler(req, res) {
 
         traitees++;
         totalCredite += montantSousLoueur;
+        totalCommission += commission;
       } catch (eLigne) {
         console.error('Erreur traitement réservation', r.id, eLigne);
         erreurs.push({ reservationId: r.id, erreur: eLigne.message });
+      }
+    }
+
+    // 8. Virement de la commission plateforme vers le compte bancaire perso —
+    // UNIQUEMENT la part de la plateforme (jamais celle des loueurs, qui
+    // reste sur le solde Stripe pour connect-transfer.js). Non bloquant :
+    // si ce virement échoue, tout ce qui précède (crédits, factures,
+    // notifications, emails) reste acquis — la commission attendra
+    // simplement le prochain passage du cron pour repartir.
+    let payoutCommission = null;
+    if (totalCommission > 0) {
+      try {
+        const payout = await stripe.payouts.create({
+          amount: Math.round(totalCommission * 100),
+          currency: 'eur',
+          description: `Commission Box'Concours - ${hierParis}`,
+        });
+        payoutCommission = { id: payout.id, montant: totalCommission };
+      } catch (ePayout) {
+        console.error('Erreur virement commission plateforme:', ePayout);
+        erreurs.push({ erreur: 'échec virement commission plateforme (non bloquant) : ' + ePayout.message });
       }
     }
 
@@ -206,6 +239,8 @@ export default async function handler(req, res) {
       concoursTermines: concoursTermines.length,
       reservationsTraitees: traitees,
       totalCredite,
+      totalCommission,
+      payoutCommission,
       erreurs,
     });
   } catch (e) {
