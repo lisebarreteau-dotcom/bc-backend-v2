@@ -5,7 +5,14 @@ const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const ALLOWED_TABLES = [
   'reservations', 'users', 'annonces', 'concours',
   'demandes_retrait', 'notifications_admin', 'notifications',
-  'avis', 'suspensions', 'messages', 'factures'
+  'avis', 'suspensions', 'messages', 'factures',
+  // 🆕 Autorise l'appel à la fonction Postgres qui génère un numéro de
+  // facture séquentiel — nécessaire maintenant que les factures sont
+  // créées depuis l'admin (marquerVirementEffectue), et plus seulement
+  // depuis connect-transfer.js. Ce n'est pas une table à proprement
+  // parler mais un endpoint RPC PostgREST ; il passe par le même chemin
+  // "table + query" ci-dessous, avec l'opération 'insert' (= POST).
+  'rpc/generate_facture_numero',
 ];
 async function supabaseAdminRequest(path, options = {}) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
