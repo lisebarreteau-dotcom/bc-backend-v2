@@ -171,33 +171,15 @@ export default async function handler(req, res) {
       }),
     });
 
-    // 3bis. Générer la facture correspondant à ce virement
-    // Non bloquant à dessein : un souci de facturation ne doit jamais
-    // empêcher le virement réel ni les notifications à l'adhérent.
-    try {
-      const numero = await supabaseRequest('rpc/generate_facture_numero', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      await supabaseRequest('factures', {
-        method: 'POST',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          numero,
-          user_id: user.id,
-          nom_client: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
-          concours_nom: '',
-          concours_lieu: '',
-          date_debut: null,
-          date_fin: null,
-          montant,
-          reservation_id: null,
-          transfer_ref: transfer.id,
-        }),
-      });
-    } catch (eFacture) {
-      console.error('Erreur génération facture connect-transfer:', eFacture);
-    }
+    // 3bis. (Ancien emplacement de la génération de facture.)
+    // La facture est désormais générée plus tôt, une fois par réservation,
+    // au moment où l'admin crédite le compte transit du sous-loueur
+    // (marquerVirementEffectue côté site — voir boxconcours.html) : ça
+    // permet de relier chaque facture à un concours et des dates précises,
+    // et ça marche aussi pour les réservations payées via le solde
+    // transit d'un cavalier (qui ne génèrent aucun virement Stripe direct
+    // à cette étape-ci). En générer une deuxième ici, au moment du retrait
+    // vers l'IBAN, ferait double emploi avec des factures déjà émises.
 
     // 4. Notifier l'adhérent (in-app + email) et l'admin
     await supabaseRequest('notifications', {
