@@ -1,5 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════
-// api/cron-solde.js
 // À ajouter dans le repo bc-backend-v2 (à côté de api/cron-avis.js),
 // puis déployé sur Vercel. Même mécanique que cron-avis.js : une seule
 // exécution programmée par jour (voir vercel.json), ~8h heure de Paris.
@@ -14,35 +12,31 @@
 // plus le lendemain du dernier jour loué par chaque réservation
 // individuelle.
 //
-// ✅ NOUVEAU : le compte Stripe a été passé en virements MANUELS
-// (Dashboard Stripe → Paramètres → Comptes bancaires et devises), pour
-// que le solde plateforme ne soit plus balayé automatiquement en
-// entier vers le compte bancaire perso — ce qui emportait avec lui la
-// part réservée aux loueurs (solde_transit), avant même qu'ils n'aient
-// demandé leur retrait. À la place, ce cron déclenche maintenant
-// lui-même un virement Stripe manuel, mais UNIQUEMENT du montant de la
-// commission plateforme (jamais la part du loueur) — un seul virement
-// groupé à la fin du run, pour toutes les commissions traitées ce
-// jour-là. La part du loueur (solde_transit) reste intacte sur le
-// solde Stripe, disponible pour connect-transfer.js le jour où il en
-// demande le retrait.
+// 🆕 RETRAIT DU VIREMENT AUTOMATIQUE DE COMMISSION (choix délibéré) :
+// ce cron créditait auparavant, en plus, la commission plateforme vers
+// le compte bancaire perso de Lise chaque jour via stripe.payouts.create().
+// Ce comportement a été retiré volontairement : vider le solde Stripe
+// au fil de l'eau réduit la réserve disponible en cas de remboursement
+// massif (concours annulé, épidémie équine — voir le bandeau d'alerte
+// du site) et complique le suivi des frais Stripe réellement prélevés
+// par transaction. La commission reste désormais sur le solde Stripe,
+// visible et disponible ; c'est Lise qui déclenche elle-même un virement
+// manuel (partiel, à son rythme) depuis le Dashboard Stripe quand elle
+// le souhaite — ça ne touche jamais à la part réservée aux loueurs
+// (solde_transit), qui reste intacte sur le solde Stripe dans tous les
+// cas, prête pour connect-transfer.js le jour où ils demandent leur
+// retrait.
 //
 // ⚠️ Même piège que sur les autres crons : la clé secrète Supabase
 // (sb_secret_...) doit être envoyée UNIQUEMENT dans l'en-tête `apikey`,
 // jamais dans `Authorization: Bearer`.
 // ═══════════════════════════════════════════════════════════════════
-
-import Stripe from 'stripe';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BACKEND_EMAIL_URL = 'https://bc-backend-v2.vercel.app/api/send-email';
-
 function supabaseHeaders(extra = {}) {
   return { apikey: SUPABASE_SERVICE_ROLE_KEY, ...extra };
 }
-
 export default async function handler(req, res) {
   // Sécurité : même garde que cron-avis.js
   if (process.env.CRON_SECRET) {
@@ -51,11 +45,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Non autorisé' });
     }
   }
-
   // Date d'hier, en heure de Paris, au format YYYY-MM-DD
   const hierParis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' })
     .format(new Date(Date.now() - 24 * 60 * 60 * 1000));
-
   try {
     // 1. Concours dont la date de fin RÉELLE est hier
     const respConcours = await fetch(
@@ -66,7 +58,6 @@ export default async function handler(req, res) {
     if (!Array.isArray(concoursTermines)) {
       return res.status(500).json({ error: 'Erreur lecture concours', detail: concoursTermines });
     }
-
     if (concoursTermines.length === 0) {
       return res.status(200).json({
         ok: true,
@@ -77,9 +68,7 @@ export default async function handler(req, res) {
         info: 'Aucun concours ne se terminait hier.',
       });
     }
-
     const concoursIds = concoursTermines.map(c => c.id).join(',');
-
     // 2. Réservations payées, liées à ces concours, pas encore créditées —
     // peu importe le nombre de jours réservés individuellement par chaque
     // cavalier, seule la fin réelle du concours compte désormais.
@@ -91,18 +80,15 @@ export default async function handler(req, res) {
     if (!Array.isArray(reservations)) {
       return res.status(500).json({ error: 'Erreur lecture réservations', detail: reservations });
     }
-
     let traitees = 0;
     let totalCredite = 0;
     let totalCommission = 0;
     const erreurs = [];
-
     for (const r of reservations) {
       try {
         // Même calcul que marquerVirementEffectue() côté admin — NE PAS modifier
         // sans modifier aussi le frontend, pour garder les deux cohérents.
         const montantSousLoueur = Math.round((r.montant || 0) * 21 / 24);
-
         // 3. Solde actuel du sous-loueur
         const respU = await fetch(
           `${SUPABASE_URL}/rest/v1/users?id=eq.${r.sous_loueur_id}&select=solde_transit,email`,
@@ -115,7 +101,6 @@ export default async function handler(req, res) {
           continue;
         }
         const nouveauSolde = (u.solde_transit || 0) + montantSousLoueur;
-
         // 4. Créditer le solde transit
         const majSolde = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${r.sous_loueur_id}`, {
           method: 'PATCH',
@@ -126,7 +111,6 @@ export default async function handler(req, res) {
           erreurs.push({ reservationId: r.id, erreur: 'échec mise à jour solde_transit' });
           continue;
         }
-
         // 5. Marquer la réservation comme virement effectué (même colonnes que le flux manuel)
         const majResa = await fetch(`${SUPABASE_URL}/rest/v1/reservations?id=eq.${r.id}`, {
           method: 'PATCH',
@@ -137,7 +121,6 @@ export default async function handler(req, res) {
           erreurs.push({ reservationId: r.id, erreur: 'échec mise à jour virement_effectue' });
           continue;
         }
-
         // 5bis. Générer la facture correspondant à la commission prélevée
         // Non bloquant à dessein : un souci de facturation ne doit jamais
         // empêcher le virement réel ni la notification à l'adhérent.
@@ -149,7 +132,6 @@ export default async function handler(req, res) {
             body: JSON.stringify({}),
           });
           const numero = await numeroResp.json();
-
           await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
             method: 'POST',
             headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
@@ -170,7 +152,6 @@ export default async function handler(req, res) {
           console.error('Erreur génération facture réservation', r.id, eFacture);
           erreurs.push({ reservationId: r.id, erreur: 'échec génération facture (non bloquant)' });
         }
-
         // 6. Notification in-app (même texte que le flux manuel)
         await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
           method: 'POST',
@@ -183,7 +164,6 @@ export default async function handler(req, res) {
             lien: 'profil:coordonnees',
           }),
         });
-
         // 7. Email (même type que le flux manuel : "virement_recu")
         if (u.email) {
           await fetch(BACKEND_EMAIL_URL, {
@@ -202,7 +182,6 @@ export default async function handler(req, res) {
             }),
           });
         }
-
         traitees++;
         totalCredite += montantSousLoueur;
         totalCommission += commission;
@@ -211,28 +190,12 @@ export default async function handler(req, res) {
         erreurs.push({ reservationId: r.id, erreur: eLigne.message });
       }
     }
-
-    // 8. Virement de la commission plateforme vers le compte bancaire perso —
-    // UNIQUEMENT la part de la plateforme (jamais celle des loueurs, qui
-    // reste sur le solde Stripe pour connect-transfer.js). Non bloquant :
-    // si ce virement échoue, tout ce qui précède (crédits, factures,
-    // notifications, emails) reste acquis — la commission attendra
-    // simplement le prochain passage du cron pour repartir.
-    let payoutCommission = null;
-    if (totalCommission > 0) {
-      try {
-        const payout = await stripe.payouts.create({
-          amount: Math.round(totalCommission * 100),
-          currency: 'eur',
-          description: `Commission Box'Concours - ${hierParis}`,
-        });
-        payoutCommission = { id: payout.id, montant: totalCommission };
-      } catch (ePayout) {
-        console.error('Erreur virement commission plateforme:', ePayout);
-        erreurs.push({ erreur: 'échec virement commission plateforme (non bloquant) : ' + ePayout.message });
-      }
-    }
-
+    // 8. (Ancien emplacement du virement automatique de la commission
+    // plateforme vers le compte bancaire perso — RETIRÉ volontairement,
+    // voir le commentaire en tête de fichier.) totalCommission est
+    // seulement gardé à titre informatif dans la réponse ci-dessous : la
+    // commission du jour reste sur le solde Stripe, disponible, en
+    // attendant un virement manuel décidé par Lise elle-même.
     return res.status(200).json({
       ok: true,
       date: hierParis,
@@ -240,7 +203,6 @@ export default async function handler(req, res) {
       reservationsTraitees: traitees,
       totalCredite,
       totalCommission,
-      payoutCommission,
       erreurs,
     });
   } catch (e) {
