@@ -127,6 +127,15 @@ const TEMPLATES = {
     sujet: "Demande de virement vers IBAN",
     html: wrap(`${h1("Demande de retrait")}${p("Un adhérent a demandé un retrait de son compte transit vers son IBAN.")}${card(`${row("Adhérent :", d?.nom || "—")}${row("Montant :", d?.montant || "—")}`)}${note("Traitez cette demande depuis l'onglet Virement de l'admin.", '#5b8ff9')}`)
   }),
+  // 🆕 Alerte envoyée à Lise quand un virement Stripe Connect vers un
+  // adhérent échoue (typiquement : solde Stripe de la plateforme
+  // insuffisant). Le solde_transit de l'adhérent n'est pas touché dans
+  // ce cas — rien n'est perdu, mais il faut réapprovisionner Stripe et
+  // faire retenter la demande.
+  admin_echec_virement: (nom, d) => ({
+    sujet: "⚠️ Échec d'un virement Stripe Connect",
+    html: wrap(`${h1("Échec d'un virement", '#e53e3e')}${p(`Bonjour ${nom}, un virement Stripe vers un adhérent a échoué et n'a pas pu être envoyé.`)}${card(`${row("Adhérent :", d?.adherent || "—")}${row("Montant :", d?.montant || "—")}${row("Erreur Stripe :", d?.erreur || "—")}`)}${note("Rien n'est perdu : le solde de l'adhérent n'a pas été débité. Vérifiez votre solde disponible sur Stripe, ajoutez des fonds si nécessaire, puis demandez à l'adhérent de retenter sa demande de retrait.", '#d69e2e')}`)
+  }),
   admin_demande_suppression_compte: (nom, d) => ({
     sujet: "Demande de suppression de compte",
     html: wrap(`${h1("Demande de suppression de compte", '#e53e3e')}${p("Un adhérent a demandé la suppression de son compte Box'Concours.")}${card(`${row("Nom :", d?.nom || "—")}${row("Email :", d?.email || "—")}`)}${note("Traite cette demande depuis l'onglet \"🗑️ Suppressions\" de l'admin, une fois les données supprimées dans Supabase.", '#5b8ff9')}`)
