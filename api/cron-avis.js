@@ -12,16 +12,21 @@
 // REJETTE la requête silencieusement. C'était la cause du bug où le
 // cron ne renvoyait jamais d'erreur mais ne trouvait/traitait jamais
 // aucune réservation.
+//
+// 🆕 Ajout : génération du reçu de sous-location du cavalier (type
+// 'location' dans la table `factures`, montant = prix total payé,
+// ex. 24€) + une notification dédiée "Votre facture est disponible",
+// au même moment que la demande d'avis envoyée au cavalier — protégé
+// par le même indicateur `avis_demande` que la demande d'avis, pour ne
+// jamais générer le reçu deux fois. Non bloquant à dessein : un souci
+// de facturation ne doit jamais empêcher la demande d'avis de partir.
 // ═══════════════════════════════════════════════════════════════════
-
 const SUPABASE_URL = 'https://mdrappwsebplprznqslm.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BACKEND_EMAIL_URL = 'https://bc-backend-v2.vercel.app/api/send-email';
-
 function supabaseHeaders(extra = {}) {
   return { apikey: SUPABASE_SERVICE_ROLE_KEY, ...extra };
 }
-
 export default async function handler(req, res) {
   // Sécurité : Vercel Cron envoie automatiquement ce header s'il y a une
   // variable d'env CRON_SECRET configurée sur le projet.
@@ -31,11 +36,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Non autorisé' });
     }
   }
-
   // Date d'hier, en heure de Paris, au format YYYY-MM-DD
   const hierParis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' })
     .format(new Date(Date.now() - 24 * 60 * 60 * 1000)); // en-CA => format YYYY-MM-DD
-
   try {
     // 1. Récupérer les réservations dont le dernier jour loué est hier,
     //    payées, et pas encore traitées pour l'avis (cavalier OU sous-loueur)
@@ -47,7 +50,6 @@ export default async function handler(req, res) {
     if (!Array.isArray(reservations)) {
       return res.status(500).json({ error: 'Erreur lecture réservations', detail: reservations });
     }
-
     // 2. Récupérer les concours concernés (pour le nom dans le mail)
     const concoursIds = [...new Set(reservations.map(r => r.concours_id).filter(Boolean))];
     let concoursMap = {};
@@ -59,13 +61,10 @@ export default async function handler(req, res) {
       const concoursData = await respC.json();
       if (Array.isArray(concoursData)) concoursMap = Object.fromEntries(concoursData.map(c => [c.id, c]));
     }
-
     let traitees = 0;
-
     for (const r of reservations) {
       const c = concoursMap[r.concours_id] || {};
-
-      // ── Côté cavalier : demande de noter le sous-loueur ──
+      // ── Côté cavalier : demande de noter le sous-loueur + reçu de sous-location ──
       if (!r.avis_demande) {
         await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
           method: 'POST',
@@ -86,13 +85,53 @@ export default async function handler(req, res) {
             })
           });
         }
+        // 🆕 Reçu de sous-location pour le cavalier (prix total payé) +
+        // notification dédiée, protégés par le même indicateur avis_demande
+        // pour ne jamais être générés deux fois.
+        try {
+          const numeroResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/generate_facture_numero`, {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({}),
+          });
+          const numero = await numeroResp.json();
+          await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+            body: JSON.stringify({
+              numero,
+              type: 'location',
+              user_id: r.cavalier_id,
+              nom_client: r.cavalier_nom || r.cavalier_email || '',
+              concours_nom: c.nom || '',
+              concours_lieu: c.lieu || '',
+              date_debut: c.date_debut || null,
+              date_fin: c.date_fin || null,
+              montant: r.montant || 0,
+              reservation_id: r.id,
+              transfer_ref: null,
+            }),
+          });
+          await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              user_id: r.cavalier_id,
+              type: 'facture_disponible',
+              titre: 'Votre facture est disponible 🧾',
+              message: `Votre facture pour ${c.nom||'ce concours'} est disponible dans votre espace personnel.`,
+              lien: 'profil:factures',
+            }),
+          });
+        } catch (eFacture) {
+          console.error('Erreur génération reçu cavalier réservation', r.id, eFacture);
+        }
         await fetch(`${SUPABASE_URL}/rest/v1/reservations?id=eq.${r.id}`, {
           method: 'PATCH',
           headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
           body: JSON.stringify({ avis_demande: true })
         });
       }
-
       // ── Côté sous-loueur : demande de noter le cavalier ──
       if (!r.avis_demande_sousloueur) {
         await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
@@ -127,10 +166,8 @@ export default async function handler(req, res) {
           body: JSON.stringify({ avis_demande_sousloueur: true })
         });
       }
-
       traitees++;
     }
-
     return res.status(200).json({ ok: true, date: hierParis, reservationsTraitees: traitees });
   } catch (e) {
     console.error('Erreur cron-avis:', e);
