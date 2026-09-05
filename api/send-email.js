@@ -144,10 +144,12 @@ const TEMPLATES = {
     sujet: "Box'Concours suspendu — Épidémie équine",
     html: wrap(`${h1("Site temporairement suspendu", '#e53e3e')}${p(`Bonjour ${nom}, en raison d'une épidémie équine déclarée, Box'Concours a temporairement suspendu ses activités (réservations, publications d'annonces) par mesure de précaution.`)}${note("Consignes de biosécurité à respecter : isolez tout cheval présentant des symptômes, évitez les contacts entre chevaux d'écuries différentes, désinfectez le matériel partagé (seaux, licols, brosses), lavez-vous les mains entre chaque cheval, et surveillez la température de vos chevaux quotidiennement.", '#d69e2e')}${p("Nous vous tiendrons informés dès la reprise des activités. Prenez soin de vos chevaux.")}${p("L'équipe Box'Concours")}`)
   }),
+  // Envoyé au CAVALIER (voir cron-avis.js) — lui demande de noter le sous-loueur
   demande_avis: (nom, d) => ({
     sujet: "Votre box sous-loué est terminé",
-    html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}`)
+    html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}${p("Votre facture est disponible dans votre espace personnel, rubrique \"Mes factures\".")}`)
   }),
+  // Envoyé au SOUS-LOUEUR (voir cron-avis.js) — lui demande de noter le cavalier
   demande_avis_cavalier: (nom, d) => ({
     sujet: "Votre box sous-loué est terminé",
     html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}`)
