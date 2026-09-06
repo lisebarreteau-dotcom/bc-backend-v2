@@ -77,7 +77,7 @@ const TEMPLATES = {
   }),
   retrait_effectue: (nom, d) => ({
     sujet: "Votre retrait a été envoyé",
-    html: wrap(`${h1("Retrait effectué !", '#38a169')}${p(`Bonjour ${nom}, votre demande de retrait a été traitée. Les fonds ont été envoyés vers votre compte bancaire.`)}${card(`${row("Montant :", d?.montant || "—")}${row("IBAN :", d?.iban_partiel || "—")}`)}${note("Le virement peut prendre 1 à 3 jours ouvrés pour apparaître sur votre compte.", '#5b8ff9')}`)
+    html: wrap(`${h1("Retrait effectué !", '#38a169')}${p(`Bonjour ${nom}, votre demande de retrait a été traitée. Les fonds ont été envoyés vers votre compte bancaire.`)}${card(`${row("Montant :", d?.montant || "—")}${row("IBAN :", d?.iban_partiel || "—")}`)}${note("Le virement peut prendre 1 à 3 jours ouvrés pour apparaître sur votre compte.", '#5b8ff9')}${p("Votre reçu est disponible dans votre espace personnel, rubrique \"Reçus/factures\".")}`)
   }),
   epidemie_demande_annulee: (nom, d) => ({
     sujet: "Votre demande a été annulée (épidémie équine)",
@@ -147,7 +147,7 @@ const TEMPLATES = {
   // Envoyé au CAVALIER (voir cron-avis.js) — lui demande de noter le sous-loueur
   demande_avis: (nom, d) => ({
     sujet: "Votre box sous-loué est terminé",
-    html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}${p("Votre facture est disponible dans votre espace personnel, rubrique \"Mes factures\".")}`)
+    html: wrap(`${h1("Location terminée")}${p(`Bonjour, votre box sous-loué pour "${d?.concours || 'ce concours'}" est terminé.`)}${p("Donnez votre avis depuis votre espace personnel.")}${p("Votre reçu est disponible dans votre espace personnel, rubrique \"Reçus/factures\".")}`)
   }),
   // Envoyé au SOUS-LOUEUR (voir cron-avis.js) — lui demande de noter le cavalier
   demande_avis_cavalier: (nom, d) => ({
