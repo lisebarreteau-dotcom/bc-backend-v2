@@ -118,8 +118,8 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               user_id: r.cavalier_id,
               type: 'facture_disponible',
-              titre: 'Votre facture est disponible 🧾',
-              message: `Votre facture pour ${c.nom||'ce concours'} est disponible dans votre espace personnel.`,
+              titre: 'Votre reçu est disponible 🧾',
+              message: `Votre reçu pour ${c.nom||'ce concours'} est disponible dans votre espace personnel.`,
               lien: 'profil:factures',
             }),
           });
