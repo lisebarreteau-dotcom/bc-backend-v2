@@ -218,8 +218,8 @@ export default async function handler(req, res) {
         user_id: user.id,
         type: 'retrait_effectue',
         titre: 'Virement effectué 🏦',
-        message: `Votre retrait de ${montant}€ a été envoyé vers votre compte bancaire.`,
-        lien: 'profil:coordonnees',
+        message: `Votre retrait de ${montant}€ a été envoyé vers votre compte bancaire. Votre reçu est disponible dans votre espace personnel.`,
+        lien: 'profil:factures',
       }),
     });
     if (user.email) {
