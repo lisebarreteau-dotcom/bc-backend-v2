@@ -103,6 +103,14 @@ const TEMPLATES = {
     sujet: "Demande de remboursement",
     html: wrap(`${h1("Demande de remboursement", '#d69e2e')}${p("Un cavalier a annulé une réservation déjà payée.")}${card(`${row("Cavalier :", d?.nom || "—")}${row("Réservation :", "#" + (d?.numero || "—"))}${row("Concours :", d?.concours || "—")}${row("Dates :", d?.dates || "—")}${row("Montant à créditer :", d?.montant || "—")}`)}${note("Traitez cette demande depuis l'onglet Virement de l'admin.", '#5b8ff9')}`)
   }),
+  // 🆕 Alerte envoyée à Lise pour CHAQUE réservation qui entre dans la
+  // file "à rembourser" (annulation cavalier, annulation concours ou
+  // épidémie) — pour être sûre de ne rater aucun remboursement à traiter
+  // manuellement depuis l'onglet Remboursements de l'admin.
+  admin_remboursement_attente: (nom, d) => ({
+    sujet: "Remboursement à traiter",
+    html: wrap(`${h1("Remboursement à traiter", '#d69e2e')}${p(`Une réservation vient d'entrer dans la file des remboursements à traiter.`)}${card(`${row("Cavalier :", d?.nom || "—")}${row("Réservation :", "#" + (d?.numero || "—"))}${row("Concours :", d?.concours || "—")}${row("Motif :", d?.motif || "—")}${row("Montant à créditer :", d?.montant || "—")}`)}${note("Traitez ce remboursement depuis l'onglet Remboursements de l'admin.", '#5b8ff9')}`)
+  }),
   box_reserve_paiement_attendu: (nom, d) => ({
     sujet: "Félicitations, votre box est réservé !",
     html: wrap(`${h1("Votre box est réservé !", '#38a169')}${p(`Félicitations ${nom} ! ${d?.cavalier || 'Un cavalier'} va procéder au paiement de sa réservation.`)}${card(`${d?.numero ? row("Numéro de réservation :", "#" + d.numero) : ''}${row("Concours :", d?.concours || "—")}${row("Dates :", d?.dates || "—")}${row("Cavalier :", d?.cavalier || "—")}`)}${note("Vous recevrez votre paiement sur votre compte transit dès la fin du concours. Pensez à demander le numéro de votre box afin de le communiquer au cavalier.", '#5b8ff9')}`)
