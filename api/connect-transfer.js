@@ -120,11 +120,29 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
     if (!user.stripe_connect_id) {
-      return res.status(400).json({ error: 'Aucun compte Stripe Connect lié — onboarding requis avant tout retrait' });
+      return res.status(400).json({ error: 'Aucun compte Stripe Connect lié — onboarding requis avant tout retrait', needsOnboarding: true });
     }
     montant = user.solde_transit || 0;
     if (montant <= 0) {
       return res.status(400).json({ error: 'Solde transit vide, rien à virer' });
+    }
+
+    // 1bis. Vérifier que le compte Stripe Connect est bien PRÊT à recevoir
+    // un virement (onboarding terminé, capacité "transfers" active) — et
+    // pas seulement commencé. Sans ce contrôle, un adhérent ayant démarré
+    // son inscription sans la terminer tombait directement sur l'erreur
+    // brute de Stripe au moment du virement ("destination account needs
+    // to have... transfers... capability enabled"), au lieu d'être
+    // renvoyé vers le formulaire pour finir son inscription.
+    let account;
+    try {
+      account = await stripe.accounts.retrieve(user.stripe_connect_id);
+    } catch (eAccount) {
+      console.error('Erreur lecture compte Stripe Connect:', eAccount);
+      return res.status(400).json({ error: 'Impossible de vérifier votre compte bancaire Stripe.', needsOnboarding: true });
+    }
+    if (account.capabilities?.transfers !== 'active') {
+      return res.status(400).json({ error: 'Votre inscription bancaire Stripe n\'est pas terminée.', needsOnboarding: true });
     }
 
     // 2. Déclencher le vrai virement Stripe (transfert interne, quasi
