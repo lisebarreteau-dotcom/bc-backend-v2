@@ -6,6 +6,10 @@ const ALLOWED_TABLES = [
   'reservations', 'users', 'annonces', 'concours',
   'demandes_retrait', 'notifications_admin', 'notifications',
   'avis', 'suspensions', 'messages', 'factures',
+  // 🆕 Manquait de la liste : bloquait silencieusement (« Table non
+  // autorisée ») le chargement de l'onglet admin "Suppressions", qui
+  // affiche les demandes de suppression de compte des adhérents.
+  'demandes_suppression',
   // 🆕 Autorise l'appel à la fonction Postgres qui génère un numéro de
   // facture séquentiel — nécessaire maintenant que les factures sont
   // créées depuis l'admin (marquerVirementEffectue), et plus seulement
