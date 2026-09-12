@@ -57,6 +57,39 @@ export default async function handler(req, res) {
   if (operation === 'verify') {
     return res.status(200).json({ ok: true });
   }
+  // 🆕 "Supprimer" un adhérent ne supprime plus rien : ça coupe seulement
+  // son accès (email + mot de passe ne fonctionnent plus pour se connecter),
+  // sans toucher à sa fiche ni à ses données (annonces, réservations,
+  // factures...) qui restent dans Supabase pour la compta et l'historique.
+  // Passe par l'API Admin Auth de Supabase (auth/v1/admin/...), différente
+  // de l'API REST (rest/v1/...) utilisée partout ailleurs dans ce fichier —
+  // celle-ci exige la clé secrète à la fois dans `apikey` ET dans
+  // `Authorization: Bearer` (contrairement à l'API REST, où envoyer aussi
+  // `Authorization` fait rejeter la requête).
+  if (operation === 'ban_user') {
+    if (!query) return res.status(400).json({ error: 'Identifiant adhérent manquant' });
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${query}`, {
+        method: 'PUT',
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        // Durée très longue (~100 ans) en l'absence de "bannir pour toujours"
+        // dans l'API Supabase — largement suffisant en pratique.
+        body: JSON.stringify({ ban_duration: '876000h' }),
+      });
+      const text = await resp.text();
+      const json = text ? JSON.parse(text) : null;
+      if (!resp.ok) {
+        throw new Error(typeof json === 'object' ? JSON.stringify(json) : String(json));
+      }
+      return res.status(200).json({ data: json });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
   if (!ALLOWED_TABLES.includes(table)) {
     return res.status(400).json({ error: `Table non autorisée : ${table}` });
   }
