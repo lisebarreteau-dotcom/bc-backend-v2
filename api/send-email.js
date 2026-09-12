@@ -62,9 +62,20 @@ const TEMPLATES = {
     sujet: "Réinitialisation de votre mot de passe",
     html: wrap(`${h1("Réinitialisation du mot de passe")}${p(`Bonjour ${nom}, vous avez demandé à réinitialiser votre mot de passe.`)}${p("Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable 1 heure.")}${note("Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe reste inchangé.", '#e53e3e')}`)
   }),
+  // Envoyé quand l'admin clique sur "Exclure" (sanction, non-respect des
+  // CGU) — ton volontairement sobre et sans emoji, y compris dans le
+  // sujet, pour limiter le risque de classement automatique en
+  // "Promotions" par les messageries.
   exclusion: (nom, d) => ({
-    sujet: "Votre compte Box'Concours a ete suspendu",
-    html: wrap(`${h1("Compte exclu de la plateforme", '#e53e3e')}${p(`Bonjour ${nom},`)}${p("Nous vous informons que votre compte Box'Concours a ete exclu suite au non-respect de notre politique d'utilisation.")}${note("Tout manquement aux regles de la plateforme entraine la suspension ou suppression definitive du compte.", '#e53e3e')}${p("Pour toute question : contact@boxconcours.fr")}${p("L'equipe Box'Concours")}`)
+    sujet: "Votre compte Box'Concours a été supprimé",
+    html: wrap(`${h1("Compte supprimé", '#e53e3e')}${p(`Bonjour ${nom},`)}${p("Nous vous informons que votre compte Box'Concours a été supprimé pour non-respect de nos conditions générales d'utilisation.")}${p("Vous n'avez donc plus accès à votre compte : votre email et votre mot de passe ne permettent plus de vous connecter à la plateforme.")}${p("Si vous pensez qu'il s'agit d'une erreur, vous pouvez nous contacter à l'adresse contact@boxconcours.fr.")}${p("L'équipe Box'Concours")}`)
+  }),
+  // Envoyé quand l'admin clique sur "Supprimer" (départ volontaire de
+  // l'adhérent, ton amical) — même consigne : pas d'emoji, y compris dans
+  // le sujet, pour limiter le risque de classement en "Promotions".
+  compte_supprime_amical: (nom, d) => ({
+    sujet: "Votre compte Box'Concours a été supprimé",
+    html: wrap(`${h1("Compte supprimé")}${p(`Bonjour ${nom},`)}${p("Votre compte Box'Concours a bien été supprimé, comme demandé.")}${p("Nous sommes au regret de vous voir partir, et espérons avoir l'occasion de vous accueillir de nouveau bientôt.")}${p("Merci d'avoir fait partie de la communauté Box'Concours.")}${p("Pour toute question, vous pouvez nous contacter à l'adresse contact@boxconcours.fr.")}${p("L'équipe Box'Concours")}`)
   }),
   // ─── NOUVEAUX TEMPLATES ─────────────────────────────────────────
   annonce_publiee: (nom, d) => ({
