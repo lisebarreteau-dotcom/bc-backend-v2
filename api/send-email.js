@@ -159,6 +159,14 @@ const TEMPLATES = {
     sujet: "Demande de suppression de compte",
     html: wrap(`${h1("Demande de suppression de compte", '#e53e3e')}${p("Un adhérent a demandé la suppression de son compte Box'Concours.")}${card(`${row("Nom :", d?.nom || "—")}${row("Email :", d?.email || "—")}`)}${note("Traite cette demande depuis l'onglet \"🗑️ Suppressions\" de l'admin, une fois les données supprimées dans Supabase.", '#5b8ff9')}`)
   }),
+  // 🆕 Envoyé (voir notify-alertes.js) quand une nouvelle annonce est
+  // publiée pour un concours sur lequel un adhérent avait cliqué "🔔 Me
+  // prévenir dès qu'un box est disponible" sur la page d'accueil. Alerte à
+  // usage unique : la demande est effacée après l'envoi.
+  alerte_nouvelle_annonce: (nom, d) => ({
+    sujet: "Une nouvelle annonce est disponible",
+    html: wrap(`${h1("Une box vient d'être publiée !", '#38a169')}${p(`Bonjour ${nom}, une nouvelle annonce vient d'être publiée pour "${d?.concours || 'ce concours'}".`)}${p("Connectez-vous à votre espace Box'Concours pour voir si les dates vous conviennent et réserver.")}${note("Vous recevrez un email à chaque nouvelle annonce publiée pour ce concours. Pour arrêter, cliquez sur \"Vous serez prévenu(e)\" sur la page d'accueil du concours — l'alerte s'arrête aussi automatiquement dès que vous réservez un box sur ce concours.", '#5b8ff9')}`)
+  }),
   suspension_epidemie_info: (nom, d) => ({
     sujet: "Box'Concours suspendu — Épidémie équine",
     html: wrap(`${h1("Site temporairement suspendu", '#e53e3e')}${p(`Bonjour ${nom}, en raison d'une épidémie équine déclarée, Box'Concours a temporairement suspendu ses activités (réservations, publications d'annonces) par mesure de précaution.`)}${note("Consignes de biosécurité à respecter : isolez tout cheval présentant des symptômes, évitez les contacts entre chevaux d'écuries différentes, désinfectez le matériel partagé (seaux, licols, brosses), lavez-vous les mains entre chaque cheval, et surveillez la température de vos chevaux quotidiennement.", '#d69e2e')}${p("Nous vous tiendrons informés dès la reprise des activités. Prenez soin de vos chevaux.")}${p("L'équipe Box'Concours")}`)
