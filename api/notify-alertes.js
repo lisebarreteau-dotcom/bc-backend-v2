@@ -51,24 +51,45 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Erreur lecture alertes', detail: alertes });
     }
     // 2. Envoyer un email à chacun (non bloquant : une adresse en erreur ne
-    // doit jamais empêcher les autres de recevoir leur alerte)
+    // doit jamais empêcher les autres de recevoir leur alerte), et créer en
+    // même temps une notification in-app (cloche 🔔 du site) pour chacun —
+    // même logique non bloquante : un échec de notif ne doit jamais
+    // empêcher l'email de partir, et inversement.
     let envoyes = 0;
     for (const a of alertes) {
-      if (!a.email) continue;
-      try {
-        await fetch(BACKEND_EMAIL_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'alerte_nouvelle_annonce',
-            to: a.email,
-            nom: a.nom || a.email,
-            details: { concours: concoursNom || '' },
-          }),
-        });
-        envoyes++;
-      } catch (eEmail) {
-        console.error('Erreur envoi email alerte à', a.email, eEmail);
+      if (a.email) {
+        try {
+          await fetch(BACKEND_EMAIL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'alerte_nouvelle_annonce',
+              to: a.email,
+              nom: a.nom || a.email,
+              details: { concours: concoursNom || '' },
+            }),
+          });
+          envoyes++;
+        } catch (eEmail) {
+          console.error('Erreur envoi email alerte à', a.email, eEmail);
+        }
+      }
+      if (a.user_id) {
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+            body: JSON.stringify({
+              user_id: a.user_id,
+              type: 'alerte_nouvelle_annonce',
+              titre: 'Nouvelle annonce disponible 🔔',
+              message: 'Une nouvelle annonce vient d\'être publiée pour ' + (concoursNom || 'un concours qui vous intéresse') + '.',
+              lien: 'home',
+            }),
+          });
+        } catch (eNotif) {
+          console.error('Erreur création notification alerte pour', a.user_id, eNotif);
+        }
       }
     }
     // 🆕 3. On ne supprime plus les demandes ici : l'alerte est récurrente,
