@@ -10,6 +10,10 @@ const ALLOWED_TABLES = [
   // autorisée ») le chargement de l'onglet admin "Suppressions", qui
   // affiche les demandes de suppression de compte des adhérents.
   'demandes_suppression',
+  // 🆕 Permet à adminDelConcours de nettoyer les demandes d'alerte "me
+  // prévenir dès qu'un box est disponible" devenues inutiles quand Lise
+  // supprime un concours (voir boxconcours.html, alertes_annonces).
+  'alertes_annonces',
   // 🆕 Autorise l'appel à la fonction Postgres qui génère un numéro de
   // facture séquentiel — nécessaire maintenant que les factures sont
   // créées depuis l'admin (marquerVirementEffectue), et plus seulement
